@@ -1,4 +1,5 @@
 import { Button } from "@/components/button/Button";
+import { Key } from "@/constants";
 import { elementUpdated, fixture, fixtureCleanup, html, oneEvent } from "@open-wc/testing-helpers";
 import "./FloatingModal";
 import { type FloatingModal } from "./FloatingModal";
@@ -183,5 +184,90 @@ describe("Floating Modal Component", () => {
     expect(container).not.toBeNull();
     const computedTransform = container.style.transform.trim().replace(/\s+/g, " ");
     expect(computedTransform).toContain("translate(-50%, -50%)");
+  });
+
+  test("should move focus to first header button when opened", async () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    expect(document.activeElement).toBe(opener);
+
+    element.show = true;
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    const firstHeaderButton = element.shadowRoot!.querySelector(
+      ".md-floating__header md-button.md-floating__header-button"
+    ) as Button.ELEMENT;
+    const activeElementInShadow = element.shadowRoot?.activeElement as HTMLElement | null;
+    expect(activeElementInShadow).toBe(firstHeaderButton);
+    document.body.removeChild(opener);
+  });
+
+  test("should return focus to opener when modal closes", async () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+
+    element.show = true;
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    const closeMdButton = element.shadowRoot!.querySelector(".md-floating__close") as Button.ELEMENT;
+    const closeButton = closeMdButton.shadowRoot!.querySelector("button") as HTMLButtonElement;
+    closeButton.click();
+
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    expect(element.show).toBeFalsy();
+    expect(document.activeElement).toBe(opener);
+    document.body.removeChild(opener);
+  });
+
+  test("should close modal when escape is pressed inside modal", async () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+
+    element.show = true;
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    const modalContainer = element.shadowRoot!.querySelector(".md-floating") as HTMLDivElement;
+    modalContainer.dispatchEvent(new KeyboardEvent("keydown", { code: Key.Escape, bubbles: true, composed: true }));
+
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    expect(element.show).toBeFalsy();
+    expect(document.activeElement).toBe(opener);
+    document.body.removeChild(opener);
+  });
+
+  test("should focus first header button when modal is restored from minimized", async () => {
+    element.show = true;
+    element.minimizable = true;
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    const minimizeMdButton = element.shadowRoot!.querySelector(".md-floating__minimize") as Button.ELEMENT;
+    const minimizeButton = minimizeMdButton.shadowRoot!.querySelector("button") as HTMLButtonElement;
+    minimizeButton.click();
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    const minimizedModal = element.shadowRoot!.querySelector("md-floating-modal-minimized") as HTMLElement;
+    const restoreMdButton = minimizedModal.shadowRoot!.querySelector(".md-floating__resize") as Button.ELEMENT;
+    const restoreButton = restoreMdButton.shadowRoot!.querySelector("button") as HTMLButtonElement;
+    restoreButton.click();
+    await elementUpdated(element);
+    jest.runAllTimers();
+
+    const firstHeaderButton = element.shadowRoot!.querySelector(
+      ".md-floating__header md-button.md-floating__header-button"
+    ) as Button.ELEMENT;
+    const activeElementInShadow = element.shadowRoot?.activeElement as HTMLElement | null;
+    expect(activeElementInShadow).toBe(firstHeaderButton);
   });
 });
